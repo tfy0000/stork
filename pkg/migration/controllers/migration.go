@@ -20,6 +20,7 @@ import (
 	"github.com/portworx/sched-ops/k8s"
 	"github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -31,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apiserver/pkg/authentication/serviceaccount"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -549,6 +551,27 @@ func resourceToBeMigrated(migration *stork_api.Migration, resource metav1.APIRes
 	}
 }
 
+func (m *MigrationController) subjectToBeMigrated(subject *rbacv1.Subject, namespace string) (bool, error) {
+	if subject.Namespace == namespace {
+		return true, nil
+	}
+	if subject.Kind == rbacv1.UserKind {
+		userNamespace, _, err := serviceaccount.SplitUsername(subject.Name)
+		if err != nil {
+			return false, nil
+		}
+		if userNamespace == namespace {
+			return true, nil
+		}
+	} else if subject.Kind == rbacv1.GroupKind {
+		groupNamespace := strings.TrimPrefix(subject.Name, serviceaccount.ServiceAccountUsernamePrefix)
+		if groupNamespace == namespace {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (m *MigrationController) objectToBeMigrated(
 	migration *stork_api.Migration,
 	resourceMap map[types.UID]bool,
@@ -646,8 +669,9 @@ func (m *MigrationController) objectToBeMigrated(
 			return false, err
 		}
 		for _, subject := range crb.Subjects {
-			if subject.Namespace == namespace {
-				return true, nil
+			migrate, err := m.subjectToBeMigrated(&subject, namespace)
+			if err != nil || migrate {
+				return migrate, err
 			}
 		}
 		return false, nil
@@ -660,8 +684,9 @@ func (m *MigrationController) objectToBeMigrated(
 		for _, crb := range crbs.Items {
 			if crb.RoleRef.Name == name {
 				for _, subject := range crb.Subjects {
-					if subject.Namespace == namespace {
-						return true, nil
+					migrate, err := m.subjectToBeMigrated(&subject, namespace)
+					if err != nil || migrate {
+						return migrate, err
 					}
 				}
 			}
