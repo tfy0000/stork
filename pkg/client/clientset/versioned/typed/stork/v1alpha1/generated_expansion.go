@@ -36,6 +36,8 @@ type RuleExpansion interface{}
 
 type SchedulePolicyExpansion interface{}
 
+type SnapshotRestoreExpansion interface{}
+
 type StorageClusterExpansion interface{}
 
 type VolumeSnapshotScheduleExpansion interface{}
