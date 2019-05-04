@@ -1694,11 +1694,11 @@ func (p *portworx) GetClusterDomains() (*stork_crd.ClusterDomains, error) {
 	clusterDomainsInfo := &stork_crd.ClusterDomains{}
 	for _, domainName := range enumerateResp.ClusterDomainNames {
 		insCtx, insCancel := context.WithTimeout(context.Background(), clusterDomainsTimeout)
-		defer insCancel()
 
 		inspectResp, err := clusterDomainClient.Inspect(insCtx, &api.SdkClusterDomainInspectRequest{
 			ClusterDomainName: domainName,
 		})
+		insCancel()
 		if err != nil {
 			return nil, err
 		}
