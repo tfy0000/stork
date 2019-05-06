@@ -439,3 +439,6 @@ func init() {
 		"Number of volumes to use for scale snapshot test")
 	flag.Parse()
 }
+
+func createConfigMapFromSecret(name, namespace string) {
+}

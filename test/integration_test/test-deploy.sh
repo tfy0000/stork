@@ -37,6 +37,18 @@ case $i in
         shift
         shift
         ;;
+    --secret)
+        echo "K8s secret name to use for test: $2"
+        remote_config_path=$2
+        shift
+        shift
+        ;;
+    --secret-namespace)
+        echo "Namespace of K8s secret to use for test: $2"
+        remote_config_path=$2
+        shift
+        shift
+        ;;
 esac
 done
 
