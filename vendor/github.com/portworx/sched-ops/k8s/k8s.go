@@ -73,6 +73,7 @@ type Ops interface {
 	StorageClassOps
 	PersistentVolumeClaimOps
 	SnapshotOps
+	VolumeSnapshotRestoreOps
 	GroupSnapshotOps
 	RuleOps
 	SecretOps
@@ -420,6 +421,19 @@ type SnapshotOps interface {
 	// The caller is expected to validate if the returned map has all snapshots expected at that point of time
 	ValidateSnapshotSchedule(string, string, time.Duration, time.Duration) (
 		map[v1alpha1.SchedulePolicyType][]*v1alpha1.ScheduledVolumeSnapshotStatus, error)
+}
+
+// VolumeSnapshotRestoreOps is interface to perform snapshot restore using CRD
+type VolumeSnapshotRestoreOps interface {
+	// SnapshotRestore restore snapshot to pvc specifed in CRD, if no pvcs defined we restore to
+	// parent volumes
+	SnapshotRestore(snap *v1alpha1.SnapshotRestore) (*v1alpha1.SnapshotRestore, error)
+	// GetSnapshotRestore returns details of given restore crd status
+	GetSnapshotRestore(name, namespace string) (*v1alpha1.SnapshotRestore, error)
+	// ListSnapshotRestore return list of snapshot in given namespaces
+	ListSnapshotRestore(namespace string) (*v1alpha1.SnapshotRestoreList, error)
+	// DeleteSnapshotRestore delete CRD for restore
+	DeleteSnapshotRestore(name, namespace string) error
 }
 
 // GroupSnapshotOps is an interface to perform k8s GroupVolumeSnapshot operations
@@ -3037,6 +3051,37 @@ func (k *k8sOps) ValidateSnapshotSchedule(name string, namespace string, timeout
 }
 
 // Snapshot APIs - END
+
+// Restore Snapshot APIs - BEGIN
+func (k *k8sOps) SnapshotRestore(snapRestore *v1alpha1.SnapshotRestore) (*v1alpha1.SnapshotRestore, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+	return k.storkClient.Stork().SnapshotRestores(snapRestore.Namespace).Create(snapRestore)
+}
+
+func (k *k8sOps) GetSnapshotRestore(name, namespace string) (*v1alpha1.SnapshotRestore, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+	return k.storkClient.Stork().SnapshotRestores(namespace).Get(name, meta_v1.GetOptions{})
+}
+
+func (k *k8sOps) ListSnapshotRestore(namespace string) (*v1alpha1.SnapshotRestoreList, error) {
+	if err := k.initK8sClient(); err != nil {
+		return nil, err
+	}
+	return k.storkClient.Stork().SnapshotRestores(namespace).List(meta_v1.ListOptions{})
+}
+
+func (k *k8sOps) DeleteSnapshotRestore(name, namespace string) error {
+	if err := k.initK8sClient(); err != nil {
+		return err
+	}
+	return k.storkClient.Stork().SnapshotRestores(namespace).Delete(name, &meta_v1.DeleteOptions{})
+}
+
+// Restore Snapshot APIs - END
 
 // GroupSnapshot APIs - BEGIN
 
