@@ -7,9 +7,10 @@ import (
 
 	snapv1 "github.com/kubernetes-incubator/external-storage/snapshot/pkg/apis/crd/v1"
 	"github.com/libopenstorage/stork/drivers/volume"
+	storkv1 "github.com/libopenstorage/stork/pkg/apis/stork/v1alpha1"
 	"github.com/portworx/sched-ops/k8s"
 	"github.com/spf13/cobra"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/genericclioptions"
@@ -18,7 +19,121 @@ import (
 
 var snapshotColumns = []string{"NAME", "PVC", "STATUS", "CREATED", "COMPLETED", "TYPE"}
 var snapSubcommand = "volumesnapshots"
+var restoreSubCommand = "volumesnapshotrestore"
 var snapAliases = []string{"volumesnapshot", "snapshots", "snapshot", "snap"}
+
+func newRestoreSnapshotCommand(cmdFactory Factory, ioStreams genericclioptions.IOStreams) *cobra.Command {
+	var snapName string
+	var snapType string
+	var snapNamespace string
+	var snapGroup bool
+
+	restoreSnapshotCommand := &cobra.Command{
+		Use:     restoreSubCommand,
+		Aliases: []string{"restore"},
+		Short:   "Restore snapshot to PVC",
+		Run: func(c *cobra.Command, args []string) {
+			if len(args) != 1 {
+				util.CheckErr(fmt.Errorf("exactly one argument needs to be provided for snapshot name"))
+				return
+			}
+			restoreCRDName := args[0]
+			snapRestore := &storkv1.SnapshotRestore{
+				Spec: storkv1.RestoreSpec{
+					SourceName:    snapName,
+					SourceType:    snapType,
+					GroupSnapshot: snapGroup,
+				},
+			}
+			snapRestore.Name = restoreCRDName
+			snapRestore.Namespace = cmdFactory.GetNamespace()
+			_, err := k8s.Instance().SnapshotRestore(snapRestore)
+			if err != nil {
+				util.CheckErr(err)
+				return
+			}
+
+			msg := fmt.Sprintf("Snapshot %v restored successfully\n", snapName)
+			printMsg(msg, ioStreams.Out)
+		},
+	}
+	restoreSnapshotCommand.Flags().StringVarP(&snapName, "snapname", "n", "", "Snapshot name to be restored")
+	restoreSnapshotCommand.Flags().StringVarP(&snapType, "snaptype", "t", "", "Snapshot type (local/cloud)")
+	restoreSnapshotCommand.Flags().StringVarP(&snapNamespace, "namespace", "", "", "Namespace of snapshot")
+	restoreSnapshotCommand.Flags().BoolVarP(&snapGroup, "is-groupsnapshot", "g", false, "True if snapshot is group, default false")
+	return restoreSnapshotCommand
+}
+
+func newGetSnapshotRestoreCommand(cmdFactory Factory, ioStreams genericclioptions.IOStreams) *cobra.Command {
+	var snapName string
+	var snapNamespace string
+
+	restoreSnapshotCommand := &cobra.Command{
+		Use:     restoreSubCommand,
+		Aliases: []string{"restore"},
+		Short:   "Get snapshot restore status",
+		Run: func(c *cobra.Command, args []string) {
+			snapRestore, err := k8s.Instance().GetSnapshotRestore(snapName, snapNamespace)
+			if err != nil {
+				util.CheckErr(err)
+				return
+			}
+
+			msg := fmt.Sprintf("Snapshot Details %v\n", snapRestore)
+			printMsg(msg, ioStreams.Out)
+		},
+	}
+	restoreSnapshotCommand.Flags().StringVarP(&snapName, "snapname", "n", "", "Snapshot name to be restored")
+	restoreSnapshotCommand.Flags().StringVarP(&snapNamespace, "namespace", "", "", "Namespace of snapshot")
+	return restoreSnapshotCommand
+}
+
+func newListSnapshotRestoreCommand(cmdFactory Factory, ioStreams genericclioptions.IOStreams) *cobra.Command {
+	var snapNamespace string
+
+	restoreSnapshotCommand := &cobra.Command{
+		Use:     restoreSubCommand,
+		Aliases: []string{"restore"},
+		Short:   "Get snapshot restore status",
+		Run: func(c *cobra.Command, args []string) {
+			snapRestore, err := k8s.Instance().ListSnapshotRestore(snapNamespace)
+			if err != nil {
+				util.CheckErr(err)
+				return
+			}
+
+			msg := fmt.Sprintf("Snapshot Details %v\n", snapRestore)
+			printMsg(msg, ioStreams.Out)
+		},
+	}
+
+	restoreSnapshotCommand.Flags().StringVarP(&snapNamespace, "namespace", "", "", "Namespace of snapshot")
+	return restoreSnapshotCommand
+}
+
+func newDeleteSnapshotRestoreCommand(cmdFactory Factory, ioStreams genericclioptions.IOStreams) *cobra.Command {
+	var snapName string
+	var snapNamespace string
+
+	restoreSnapshotCommand := &cobra.Command{
+		Use:     restoreSubCommand,
+		Aliases: []string{"restore"},
+		Short:   "Get snapshot restore status",
+		Run: func(c *cobra.Command, args []string) {
+			err := k8s.Instance().DeleteSnapshotRestore(snapName, snapNamespace)
+			if err != nil {
+				util.CheckErr(err)
+				return
+			}
+
+			msg := fmt.Sprintf("Snapshot Restore Deleted %v\n", snapName)
+			printMsg(msg, ioStreams.Out)
+		},
+	}
+	restoreSnapshotCommand.Flags().StringVarP(&snapName, "snapname", "n", "", "Snapshot name to be restored")
+	restoreSnapshotCommand.Flags().StringVarP(&snapNamespace, "namespace", "", "", "Namespace of snapshot")
+	return restoreSnapshotCommand
+}
 
 func newCreateSnapshotCommand(cmdFactory Factory, ioStreams genericclioptions.IOStreams) *cobra.Command {
 	var snapName string
