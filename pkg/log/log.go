@@ -240,3 +240,15 @@ func ApplicationCloneLog(clone *storkv1.ApplicationClone) *logrus.Entry {
 
 	return logrus.WithFields(logrus.Fields{})
 }
+
+// ApplicationBackupScheduleLog formats a log message with applicationbackupschedule information
+func ApplicationBackupScheduleLog(backupSchedule *storkv1.ApplicationBackupSchedule) *logrus.Entry {
+	if backupSchedule != nil {
+		return logrus.WithFields(logrus.Fields{
+			"ApplicationBackupScheduleName":      backupSchedule.Name,
+			"ApplicationBackupScheduleNamespace": backupSchedule.Namespace,
+		})
+	}
+
+	return logrus.WithFields(logrus.Fields{})
+}

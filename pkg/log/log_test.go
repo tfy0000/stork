@@ -28,6 +28,7 @@ func TestLog(t *testing.T) {
 	t.Run("applicationBackupLogTest", applicationBackupLogTest)
 	t.Run("applicationRestoreLogTest", applicationRestoreLogTest)
 	t.Run("applicationCloneLogTest", applicationCloneLogTest)
+	t.Run("applicationBackupScheduleLogTest", applicationBackupScheduleLogTest)
 }
 
 func podLogTest(t *testing.T) {
@@ -230,4 +231,16 @@ func applicationCloneLogTest(t *testing.T) {
 	}
 	ApplicationCloneLog(applicationClone).Infof("applicationclone log")
 	ApplicationCloneLog(nil).Infof("applicationclone nil log")
+}
+
+func applicationBackupScheduleLogTest(t *testing.T) {
+	metadata := metav1.ObjectMeta{
+		Name:      "testapplicationbackupschedule",
+		Namespace: "testnamespace",
+	}
+	applicationBackupSchedule := &storkv1.ApplicationBackupSchedule{
+		ObjectMeta: metadata,
+	}
+	ApplicationBackupScheduleLog(applicationBackupSchedule).Infof("applicationbackupschedule log")
+	ApplicationBackupScheduleLog(nil).Infof("applicationbackupschedule nil log")
 }
