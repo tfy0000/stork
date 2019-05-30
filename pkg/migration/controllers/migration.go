@@ -184,6 +184,27 @@ func (m *MigrationController) Handle(ctx context.Context, event sdk.Event) error
 		var terminationChannels []chan bool
 		var err error
 
+		// Fail the migration if the current domain is inactive
+		clusterDomains, err := m.Driver.GetClusterDomains()
+		// Ignore errors
+		if err == nil {
+			for _, domainInfo := range clusterDomains.ClusterDomainInfos {
+				if domainInfo.Name == clusterDomains.LocalDomain &&
+					domainInfo.State == stork_api.ClusterDomainInactive {
+					migration.Status.Status = stork_api.MigrationStatusFailed
+					migration.Status.Stage = stork_api.MigrationStageFinal
+					migration.Status.FinishTimestamp = metav1.Now()
+					msg := fmt.Sprintf("Failing migration since local clusterdomain is inactive")
+					m.Recorder.Event(migration,
+						v1.EventTypeWarning,
+						string(stork_api.MigrationStatusFailed),
+						msg)
+					log.MigrationLog(migration).Warn(msg)
+					return sdk.Update(migration)
+				}
+			}
+		}
+
 		switch migration.Status.Stage {
 		case stork_api.MigrationStageInitial:
 			// Make sure the namespaces exist
